@@ -14,6 +14,16 @@ sg.theme('DarkAmber')
 from gtts import gTTS
 import datetime
 #import security_camera
+import requests
+
+def convertir_libras_a_pesos(libras):
+    url = "https://api.exchangerate-api.com/v4/latest/GBP"  # API para obtener la tasa de cambio
+    response = requests.get(url)
+    data = response.json()
+    tasa_cambio = data["rates"]["MXN"]  # Tasa de cambio de libras a pesos mexicanos
+
+    pesos = libras * tasa_cambio
+    return pesos
 
 contactos = {
     'andrew':'+525545464585',
@@ -33,7 +43,7 @@ def take_command():
             listener.adjust_for_ambient_noise(source)
             talk("Ok, I'm listening to you")
             print('listening...')
-            voice = listener.listen(source, phrase_time_limit=7)
+            voice = listener.listen(source, phrase_time_limit=10)
             command = listener.recognize_google(voice)
             command = command.lower()
             if 'lisa' in command:
@@ -117,6 +127,13 @@ def run_alexa():
         global close
         close=1
         talk('Okay')
+    elif 'convert money' in command:
+        # Ejemplo de uso
+        talk("Enter the amount of British Pounds to convert into Mexican pesos")
+        libras = float(input("British Pounds: "))
+        pesos_mexicanos = convertir_libras_a_pesos(libras)
+        print(f"{libras} British Pounds equals to {pesos_mexicanos} Mexican pesos.")
+        talk(f"{libras} British Pounds equals to {pesos_mexicanos} Mexican pesos.")
     elif 'what is my internet speed' in command:
         st = speedtest.Speedtest()
         talk('I am checking your internet speed. Please give a minute')

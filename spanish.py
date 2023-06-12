@@ -7,6 +7,8 @@ import pyttsx3
 import pywhatkit
 import datetime
 import wikipedia
+import wikipediaapi
+
 import pyjokes
 import PySimpleGUI as sg
 import os
@@ -15,7 +17,6 @@ from gtts import gTTS
 import datetime
 #import security_camera
 import requests
-
 #-----------------------------------------------------------------------------------------
 #Declaracion de funciones
 def talk(text):
@@ -23,17 +24,18 @@ def talk(text):
     engine.runAndWait()
 
 def take_command():
+    command = ""
     try:
         with sr.Microphone() as source:
-            print("Adjusting for background noise. One second")
+            #print("Adjusting for background noise. One second")
             listener.adjust_for_ambient_noise(source)
-            talk("Ok, I'm listening to you")
+            #talk("Ok, I'm listening to you")
             print('listening...')
             voice = listener.listen(source, phrase_time_limit=10)
-            command = listener.recognize_google(voice)
+            command = listener.recognize_google(voice, language="es-ES")
             command = command.lower()
-            if 'lisa' in command:
-                command = command.replace('lisa', '')
+            if 'alexa' in command:
+                command = command.replace('alexa', '')
             print(command)
     except LookupError:   # speech is unintelligible
         print("Could not understand audio")
@@ -77,32 +79,46 @@ def Wolfram():
 
 def run_alexa():
     command = take_command()
-    print('Procesing your request...')
-    talk('Procesing your request')
-    if 'play' in command:
-        song = command.replace('play', '')
-        talk('playing ' + song)
-        print('playing ' + song)
+    print('Procesando tu petición...')
+    talk('Procesando tu petición...')
+    if 'reproduce' in command:
+        song = command.replace('reproduce', '')
+        print('Reproduciendo: ' + song)
+        talk('Reproduciendo: ' + song)
         pywhatkit.playonyt(song)
-    elif 'president' in command:
-        person = command
-        wolfram_res = next(client.query(person).results).text
-        talk(wolfram_res)
-        sg.PopupNonBlocking(wolfram_res)
-    elif 'who is' in command:
-        person = command.replace('who is', '')
+    elif 'cuales son' in command:
+        try:
+            print(command)
+            person = command
+            wolfram_res = next(client.query(person).results).text
+            talk(wolfram_res)
+            sg.PopupNonBlocking(wolfram_res)
+        except Exception as e:
+            print("Error:", e)
+    elif 'muéstrame más información sobre' in command:
+        person = command.replace('muéstrame más información sobre', '')
         info = wikipedia.summary(person, 1)
-        print(info)
-        talk('wikipedia result:'+info)
-    elif 'goodbye' in command:
+        print('wikipedia result: '+info)
+        talk('wikipedia result: '+info)
+    elif 'que es' in command:
+        search_term = command
+        language = "es"
+        wiki_wiki = wikipediaapi.Wikipedia(language)
+        page = wiki_wiki.page(search_term)
+        if page.exists():
+            print("Título:", page.title)
+            print("Contenido:", page.text)
+        else:
+            print("La página no existe.")
+    elif 'adiós' or 'apagate' or 'hasta luego' in command:
         global close
         close=1
         talk('Okay')
-    elif 'search for' in command:
-        search = command.replace('search for', '')
+    elif 'busca' in command:
+        search = command.replace('busca', '')
         pywhatkit.search(search)
     else:
-        talk('Please say the command again.')
+        talk('NO te entendí, ¿puedes repetirlo?')
 
 #-----------------------------------------------------------------------------------------#
 #Condigo principal
@@ -110,13 +126,15 @@ listener = sr.Recognizer()
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 print(voices)
-engine.setProperty('voice', voices[2].id)
+engine.setProperty('voice', voices[3].id)
 close=0
-talk('Hi, I\'m Lisa. How can I help?...')
+os.system('cls' if os.name == 'nt' else 'clear')
+talk('Hola, soy Alexa. ¿Cómo puedo ayudarte?')
 while True:
     run_alexa()
     if close == 1:
-        talk('See you again. Have a nice day')
+        talk('¡Que tengas un buen día!')
         break
-    talk('Do you need anything else?...')
-    print('Do you need anything else?...')
+    print('¿Necesitas algo más?...')
+    talk('¿Necesitas algo más?...')
+    

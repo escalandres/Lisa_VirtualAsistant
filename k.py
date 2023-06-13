@@ -1,8 +1,15 @@
-reuso_values = []
-limit = 64
+import wikipediaapi
+# Crear un objeto de la API de Wikipedia
+wiki_wiki = wikipediaapi.Wikipedia('es')
 
-for i in range(1, limit+1):
-    if limit % i == 0:
-        reuso_values.append(i)
+# Buscar un mineral y obtener su página
+mineral = input("Ingrese el nombre del mineral: ")
+page = wiki_wiki.page(mineral)
 
-print(reuso_values)
+if page.exists():
+    # Obtener el contenido del resumen del mineral
+    resumen = page.summary
+    print("Resumen:")
+    print(resumen)
+else:
+    print("No se encontró información sobre el mineral.")

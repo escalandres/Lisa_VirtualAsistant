@@ -1,4 +1,8 @@
 monicaToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIyIiwianRpIjoiMjMyMjQ2NWIzNGZjNmRmYWZhM2FhZDczM2NhYTdjOWU3OTQwZjZiMzFjMmQ1YzJmOWE5YzQwOGZlM2FlNWRjZDBiZThiNzllNzUyYWRmNGQiLCJpYXQiOjE2ODY1NDQ3NzQuNDMyNTY0LCJuYmYiOjE2ODY1NDQ3NzQuNDMyNTY2LCJleHAiOjE3MTgxNjcxNzQuNDI0NjE5LCJzdWIiOiIzNzI1NSIsInNjb3BlcyI6W119.oRB-WmHwT9CMyWuAn5zl1URXGi4Wqb-x2ixhLAcxhG1IL_COkRTnBXr2jMJGK88TaTLyqBpcdnT1irDekSdgCek6zphuJFFlK4Fygu8gSuWf9BqbX5BVV2Q1MxWJC3q_STf_BwHUmG971wIlzy0IlJDSfx8u7lZR2Iktoq21l9VSqDMV3rtHa40n7twhe8MbYOi-ybpF12ciV6nRljKNza2_Y2MktmBDuqENNRKZcBfmGdHQTqL0ncvMx4ps6rIwvDKMrwZkRQ8s5_EkeRf8WFqavLdgnozeiTUj4WXCtasj8Vz9sFZYzVPHCBPasRsvh9iCi8txHf5OZTmn0qDKYvsTOu401Z6D_sWyrjt2W99gLSJuoEEi5mWbIDTUTulQ6nKiJh-vGXI1wTZQyObybJ26yPk0dSuvWTw1LO6OItOz964PcV9Ca2N8trIIiDVnoaJ1hwJky4305y913sJH2mQwIUIbnZwMxaGeXswUqUCu_bBf3D0v9_265_p2MyAYBGAlnfRGbHo2qa-dOHvjbCD2R9KL-CruxDoHyiQ4TL3NytVKnRK0VbblnkMEK1znU_gsaTwe5obrAH_7dPRPgDHOpBAJB_2AHf8XW59w3QnIE2ztMha20GMbn5ZGB8DeRrkH932thsnMQm-T0szs5mmh4XS9KQ3qtX8neTSgbi4"
+gptToken = "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"
+import openai
+# Configurar la API de OpenAI
+openai.api_key = gptToken
 from monica import MonicaClient
 import wolframalpha
 app_id = "RGKTU7-VYTGGTHK2Y"
@@ -24,6 +28,7 @@ import json
 #-----------------------------------------------------------------------------------------
 #Declaracion de funciones
 def talk(text):
+    print(text)
     engine.say(text)
     engine.runAndWait()
 
@@ -56,14 +61,37 @@ def take_command():
 
 def get_info():
     try:
+        info = ""
         with sr.Microphone() as source:
-            print('listening...')
-            voice = listener.listen(source,phrase_time_limit=15)
-            info = listener.recognize_google(voice)
-            print(info)
-            return info.lower()
+            listener.adjust_for_ambient_noise(source)
+            talk('¿Cuál mineral quieres buscar?')
+            voice = listener.listen(source,phrase_time_limit=10)
+            info = listener.recognize_google(voice, language="es-ES")
+            info = info.lower()
+    except LookupError:   # speech is unintelligible
+        print("Could not understand audio")
+        pass
+    except sr.UnknownValueError:
+        print("Google Speech Recognition could not understand audio")
+    except sr.RequestError as e:
+        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+    except Exception as e:
+        print("Error:", e)
     except:
         pass
+    return info
+
+def obtener_respuesta(pregunta):
+    respuesta = openai.Completion.create(
+        engine='text-davinci-003',  # Utiliza el motor 'text-davinci-003' para ChatGPT
+        prompt=pregunta,
+        max_tokens=100,  # Define la longitud máxima de la respuesta generada
+        temperature=0.7,  # Controla la creatividad de la respuesta generada
+        n=1,  # Especifica el número de respuestas a generar
+        stop=None,  # Puedes definir una cadena para detener la respuesta en un punto específico
+        log_level='info'  # Opcionalmente, puedes habilitar el registro de nivel de información
+    )
+    return respuesta.choices[0].text.strip()
 
 def Wolfram():
     layout =[[sg.Text('Enter a math operation'), sg.InputText()],[sg.Button('Ok'), sg.Button('Cancel')]]
@@ -115,21 +143,47 @@ def run_alexa():
         else:
             print("La página no existe.")
 
-    elif 'oro' in command:
+    elif 'dime más sobre los minerales' in command:
+        pregunta_usuario = get_info()
         url = "https://es.wikipedia.org/w/api.php"
         params = {
             "action": "query",
             "format": "json",
             "prop": "extracts",
-            "titles": "Oro",
+            "titles": pregunta_usuario + "(elemento)",
             "exintro": True,
             "explaintext": True
         }
         response = requests.get(url, params=params)
         data = response.json()
         page = data["query"]["pages"].popitem()[1]
+        # sg.PopupNonBlocking(page["extract"])
         print(page["extract"])
         talk(page["extract"])
+
+    elif 'minerales' in command:
+        pregunta_usuario = get_info()
+        # Crear un objeto de la API de Wikipedia
+        wiki_wiki = wikipediaapi.Wikipedia('es')
+
+        # Buscar un mineral y obtener su página
+        mineral = input("Ingrese el nombre del mineral: ")
+        page = wiki_wiki.page(mineral)
+
+        if page.exists():
+            # Obtener el contenido del resumen del mineral
+            resumen = page.summary
+            print("Resumen:")
+            print(resumen)
+        else:
+            print("No se encontró información sobre el mineral.")
+
+    elif 'chat gpt' in command:
+        #pregunta_usuario = get_info()
+        pregunta_usuario = input("Pregunta: ")
+        respuesta_chatgpt = obtener_respuesta(pregunta_usuario)
+        sg.PopupNonBlocking(respuesta_chatgpt)
+        talk(respuesta_chatgpt)
     elif 'mónica' in command:
         try:
             # url = "https://app.monicahq.com/api"
